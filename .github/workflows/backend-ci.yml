@@ -9,6 +9,10 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write  # Grant permission to create an ID token
+      contents: read    # Allow read access to the repository contents
+
     steps:
       # Checkout the repository
       - name: Checkout code
@@ -37,11 +41,11 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
           client-secret: ${{ secrets.AZUREAPPSERVICE_PASSWORD }}
 
-         # Azure Container Registry (ACR) Login
+      # Azure Container Registry (ACR) Login
       - name: Login to ACR
         run: |
           az acr login --name nestapp
-      
+
       # Push Docker image to ACR
       - name: Push Docker image
         run: |
@@ -52,5 +56,5 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: <your_app_name>
-          images: '<your_acr_login_server>/my-nestjs-app:latest'
+          app-name: user-app-api
+          images: 'nestapp.azurecr.io/my-nestjs-app:latest'
