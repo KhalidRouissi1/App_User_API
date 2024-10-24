@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-#
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -12,28 +12,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Get Azure access token with curl
         id: azure-login
         run: |
           # Request access token using curl
-          response=$(curl -X POST https://login.microsoftonline.com/${{ secrets.AZURE_TENANT_ID }}/oauth2/v2.0/token \
+          response=$(curl -s -X POST https://login.microsoftonline.com/${{ secrets.AZURE_TENANT_ID }}/oauth2/v2.0/token \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -d "client_id=${{ secrets.AZURE_CLIENT_ID }}" \
             -d "client_secret=${{ secrets.AZURE_CLIENT_SECRET }}" \
             -d "scope=https://management.azure.com/.default" \
             -d "grant_type=client_credentials")
           
+          # Print the response for debugging
+          echo $response | jq .
+
           # Extract the access token from the response
-          echo $response
           token=$(echo $response | jq -r '.access_token')
 
           if [ -z "$token" ]; then
-            echo "Azure login failed!"
+            echo "Azure login failed! Response: $response"
             exit 1
           fi
 
-          # Store the token as an output for later steps
-          echo "::set-output name=token::$token"
+          # Store the token as an environment variable for later steps
+          echo "AZURE_ACCESS_TOKEN=$token" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: |
@@ -42,7 +47,7 @@ jobs:
       - name: Push Docker image to ACR
         run: |
           # Log in to Azure Container Registry using the access token
-          echo ${{ steps.azure-login.outputs.token }} | docker login nestapp.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password-stdin
+          echo ${{ secrets.AZURE_CLIENT_ID }} | docker login nestapp.azurecr.io --username ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
           docker tag nestapp:latest nestapp.azurecr.io/nestapp:latest
           docker push nestapp.azurecr.io/nestapp:latest
 
@@ -50,7 +55,7 @@ jobs:
         run: |
           # Deploy the app using curl and the access token
           curl -X POST "https://management.azure.com/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/user-app-api_group/providers/Microsoft.Web/sites/<your-app-service-name>/config/web?api-version=2021-02-01" \
-            -H "Authorization: Bearer ${{ steps.azure-login.outputs.token }}" \
+            -H "Authorization: Bearer ${{ env.AZURE_ACCESS_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
                   "properties": {
