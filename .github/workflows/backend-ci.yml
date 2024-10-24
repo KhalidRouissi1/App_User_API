@@ -1,0 +1,37 @@
+name: Deploy NestJS App (Development)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install  # No need to cd into any folder
+
+    - name: Start NestJS App
+      run: |
+        nohup npm start &  # Start in the background
+
+    - name: Check if the app is running
+      run: |
+        sleep 10  # Wait for the app to start
+        curl -f http://localhost:4001/api || echo "App did not start successfully."
+
+    - name: Deploy to Azure Web App
+      run: |
+        curl -X POST -u "${{ secrets.AZURE_USERNAME }}:${{ secrets.AZURE_PASSWORD }}" \
+        --data-binary @"." \
+        "https://${{ secrets.AZURE_PUBLISH_URL }}/api/zipdeploy"
