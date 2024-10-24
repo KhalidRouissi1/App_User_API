@@ -1,1 +1,56 @@
+name: Deploy to Azure
 
+on:
+  push:
+    branches:
+      - main  # Trigger deployment when code is pushed to the main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Set up Node.js
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Build Docker image
+      - name: Build Docker image
+        run: docker build -t my-nestjs-app:latest .
+
+      # Login to Azure using your service principal
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
+          client-secret: ${{ secrets.AZUREAPPSERVICE_PASSWORD }}
+
+      # Azure Container Registry (ACR) Login
+      - name: Login to ACR
+        run: |
+          az acr login --name <your_acr_name>
+
+      # Push Docker image to ACR
+      - name: Push Docker image
+        run: |
+          docker tag my-nestjs-app:latest <your_acr_login_server>/my-nestjs-app:latest
+          docker push <your_acr_login_server>/my-nestjs-app:latest
+
+      # Deploy Docker image to Azure Web App
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: <your_app_name>
+          images: '<your_acr_login_server>/my-nestjs-app:latest'
