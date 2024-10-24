@@ -37,16 +37,16 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
           client-secret: ${{ secrets.AZUREAPPSERVICE_PASSWORD }}
 
-      # Azure Container Registry (ACR) Login
+         # Azure Container Registry (ACR) Login
       - name: Login to ACR
         run: |
-          az acr login --name <your_acr_name>
-
+          az acr login --name nestapp
+      
       # Push Docker image to ACR
       - name: Push Docker image
         run: |
-          docker tag my-nestjs-app:latest <your_acr_login_server>/my-nestjs-app:latest
-          docker push <your_acr_login_server>/my-nestjs-app:latest
+          docker tag my-nestjs-app:latest nestapp.azurecr.io/my-nestjs-app:latest
+          docker push nestapp.azurecr.io/my-nestjs-app:latest
 
       # Deploy Docker image to Azure Web App
       - name: Deploy to Azure Web App
