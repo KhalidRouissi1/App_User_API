@@ -3,58 +3,40 @@ name: Deploy to Azure
 on:
   push:
     branches:
-      - main  # Trigger deployment when code is pushed to the main branch
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    permissions:
-      id-token: write  # Grant permission to create an ID token
-      contents: read    # Allow read access to the repository contents
-
     steps:
-      # Checkout the repository
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up Node.js
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      # Install dependencies
-      - name: Install dependencies
-        run: npm install
-
-      # Build Docker image
-      - name: Build Docker image
-        run: docker build -t my-nestjs-app:latest .
-
-      # Login to Azure using your service principal
-      - name: Azure Login
+      - name: Log in to Azure
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
-          client-secret: ${{ secrets.AZUREAPPSERVICE_PASSWORD }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      # Azure Container Registry (ACR) Login
-      - name: Login to ACR
+      - name: Build Docker image
+        run: |
+          docker build . -t nestapp
+
+      - name: Push Docker image to ACR
         run: |
           az acr login --name nestapp
+          docker tag nestapp:latest nestapp.azurecr.io/nestapp:latest
+          docker push nestapp.azurecr.io/nestapp:latest
 
-      # Push Docker image to ACR
-      - name: Push Docker image
+      - name: Deploy to Azure App Service
         run: |
-          docker tag my-nestjs-app:latest nestapp.azurecr.io/my-nestjs-app:latest
-          docker push nestapp.azurecr.io/my-nestjs-app:latest
-
-      # Deploy Docker image to Azure Web App
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: user-app-api
-          images: 'nestapp.azurecr.io/my-nestjs-app:latest'
+          az webapp config container set \
+            --name <your-app-service-name> \
+            --resource-group user-app-api_group \
+            --docker-custom-image-name nestapp.azurecr.io/nestapp:latest \
+            --docker-registry-server-url https://nestapp.azurecr.io \
+            --docker-registry-server-user ${{ secrets.AZURE_CLIENT_ID }} \
+            --docker-registry-server-password ${{ secrets.AZURE_CLIENT_SECRET }}
