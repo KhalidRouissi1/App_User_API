@@ -10,5 +10,4 @@ COPY . .
 
 EXPOSE 3000
 
-# Run the app in development mode
 CMD ["npm", "run", "start:dev"]
