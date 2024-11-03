@@ -3,7 +3,9 @@
     "baseUrl": "./src",  // Définit que les chemins relatifs doivent être résolus à partir de `src`
     "paths": {
       "@/*": ["./src/*"],    // L'alias "@" est lié au dossier src
-      "app/*": ["src/app/*"] // L'alias app doit pointer vers src/app
+      "app/*": ["src/app/*"], // L'alias app doit pointer vers src/app
+      "i18n/*": ["i18n/*"]
+
     },
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
